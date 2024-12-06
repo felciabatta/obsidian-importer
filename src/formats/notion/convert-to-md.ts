@@ -259,7 +259,7 @@ function fixNotionCallouts(body: HTMLElement) {
 	for (let callout of body.findAll('figure.callout')) {
 		// Can have 1–2 children; we always want .lastElementChild for callout content.
 		let calloutBlock = '> [!important]\n';
-		const description = callout.lastElementChild?.childNodes;
+		const description = callout.lastElementChild?.childNodes ?? new NodeList();
 		for (let el of description) {
 			calloutBlock += `> ${el.textContent}\n`;
 		}
