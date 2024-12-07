@@ -10,13 +10,15 @@ import { getNotionId } from './notion/notion-utils';
 import { parseFileInfo } from './notion/parse-info';
 
 export class NotionImporter extends FormatImporter {
-	
-	
+
+
 	parentsInSubfolders: boolean;
 	singleLineBreaks: boolean;
+	calloutTitles: boolean;
 
 	init() {
 		this.parentsInSubfolders = true;
+		this.calloutTitles = true;
 		this.addFileChooserSetting('Exported Notion', ['zip']);
 		this.addOutputLocationSetting('Notion');
 		new Setting(this.modal.contentEl)
@@ -33,6 +35,31 @@ export class NotionImporter extends FormatImporter {
 				.setValue(this.singleLineBreaks)
 				.onChange((value) => {
 					this.singleLineBreaks = value;
+				}));
+
+		let descriptionFragment = new DocumentFragment();
+		descriptionFragment.createSpan({
+			text: 'Treat the first line of Notion callouts as the '
+		});
+		descriptionFragment.createEl('a', {
+			text: 'callout title',
+			href: 'https://help.obsidian.md/Editing+and+formatting/Callouts#Change+the+title',
+		});
+		descriptionFragment.createSpan({
+			text: '. If turned off, callouts are formatted with the '
+		});
+		descriptionFragment.createEl('a', {
+			text: 'important',
+			href: 'https://help.obsidian.md/Editing+and+formatting/Callouts#Supported+types',
+		});
+		descriptionFragment.createSpan({ text: ' style.' });
+		new Setting(this.modal.contentEl)
+			.setName('Callout titles')
+			.setDesc(descriptionFragment)
+			.addToggle((toggle) => toggle
+				.setValue(this.calloutTitles)
+				.onChange((value) => {
+					this.calloutTitles = value;
 				}));
 	}
 
@@ -54,7 +81,11 @@ export class NotionImporter extends FormatImporter {
 		// As a convention, all parent folders should end with "/" in this importer.
 		if (!targetFolderPath?.endsWith('/')) targetFolderPath += '/';
 
-		const info = new NotionResolverInfo(vault.getConfig('attachmentFolderPath') ?? '', this.singleLineBreaks);
+		const info = new NotionResolverInfo(
+			vault.getConfig('attachmentFolderPath') ?? '',
+			this.singleLineBreaks,
+			this.calloutTitles
+		);
 
 		// loads in only path & title information to objects
 		ctx.status('Looking for files to import');

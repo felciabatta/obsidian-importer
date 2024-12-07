@@ -58,7 +58,7 @@ export async function readToMarkdown(info: NotionResolverInfo, file: ZipEntryFil
 	// fixEquations must come before fixNotionCallouts
 	fixEquations(body);
 	stripLinkFormatting(body);
-	fixNotionCallouts(body);
+	fixNotionCallouts(body, info);
 	encodeNewlinesToBr(body);
 	fixNotionDates(body);
 
@@ -251,22 +251,29 @@ function stripToSentence(paragraph: string) {
 	return firstSentence ?? '';
 }
 
-function isCallout(element: Element) {
-	return !!(/callout|bookmark/.test(element.getAttribute('class') ?? ''));
+function isCallout(element: Element | null | undefined) {
+	return !!(/callout|bookmark/.test(element?.getAttribute('class') ?? ''));
 }
 
-function fixNotionCallouts(body: HTMLElement) {
+function fixNotionCallouts(body: HTMLElement, info: NotionResolverInfo) {
 	for (let callout of body.findAll('figure.callout')) {
 		// Can have 1–2 children; we always want .lastElementChild for callout content.
-		let calloutBlock = '> [!important]\n';
 		const description = callout.lastElementChild?.childNodes ?? new NodeList();
-		for (let el of description) {
-			calloutBlock += `> ${el.textContent}\n`;
+		let calloutBlock = '> [!important]';
+		for (const [i, el] of description.entries()) {
+			if (i == 0 && info.calloutTitles) {
+				// Callout title/top-level text
+				calloutBlock += ` ${el.textContent}`;
+			}
+			else {
+				// Callout nested body text
+				calloutBlock += `\n> ${el.textContent}`;
+			}
 		}
-		if (callout.nextElementSibling && isCallout(callout.nextElementSibling)) {
+		if (isCallout(callout.nextElementSibling)) {
 			calloutBlock += '\n';
 		}
-		callout.replaceWith(calloutBlock);
+		callout.replaceWith(calloutBlock + '\n');
 	}
 }
 
@@ -277,7 +284,7 @@ function fixNotionEmbeds(body: HTMLElement) {
 		const title = embed.find('div.bookmark-title')?.textContent;
 		const description = stripToSentence(embed.find('div.bookmark-description')?.textContent ?? '');
 		let calloutBlock = `> [!info] ${title}\n` + `> ${description}\n` + `> [${link}](${link})\n`;
-		if (embed.nextElementSibling && isCallout(embed.nextElementSibling)) {
+		if (isCallout(embed.nextElementSibling)) {
 			// separate callouts with spaces
 			calloutBlock += '\n';
 		}

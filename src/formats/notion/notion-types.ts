@@ -69,10 +69,12 @@ export class NotionResolverInfo {
 	pathsToAttachmentInfo: Record<string, NotionAttachmentInfo> = {};
 	attachmentPath: string;
 	singleLineBreaks: boolean;
+	calloutTitles: boolean;
 
-	constructor(attachmentPath: string, singleLineBreaks: boolean) {
+	constructor(attachmentPath: string, singleLineBreaks: boolean, calloutTitles: boolean) {
 		this.attachmentPath = attachmentPath;
 		this.singleLineBreaks = singleLineBreaks;
+		this.calloutTitles = calloutTitles;
 	}
 
 	getPathForFile(fileInfo: NotionFileInfo | NotionAttachmentInfo) {
