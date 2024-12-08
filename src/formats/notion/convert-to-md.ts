@@ -235,7 +235,8 @@ function fixEquations(body: HTMLElement) {
 	for (const figEqn of figEqnEls) {
 		const annotation = figEqn.find('annotation');
 		if (!annotation) continue;
-		figEqn.replaceWith(`$$${annotation.textContent}$$`);
+		annotation.textContent = `$$${annotation.textContent}$$`;
+		figEqn.replaceWith(annotation);
 	}
 	// Inline Equations
 	const spanEqnEls = body.findAll('span.notion-text-equation-token');
@@ -252,28 +253,47 @@ function stripToSentence(paragraph: string) {
 }
 
 function isCallout(element: Element | null | undefined) {
-	return !!(/callout|bookmark/.test(element?.getAttribute('class') ?? ''));
+	return !!/callout|bookmark/.test(element?.getAttribute('class') ?? '');
 }
 
 function fixNotionCallouts(body: HTMLElement, info: NotionResolverInfo) {
 	for (let callout of body.findAll('figure.callout')) {
 		// Can have 1–2 children; we always want .lastElementChild for callout content.
-		const description = callout.lastElementChild?.childNodes ?? new NodeList();
+		const description =
+			callout.lastElementChild?.childNodes ?? new NodeList();
 		let calloutBlock = '> [!important]';
 		for (const [i, el] of description.entries()) {
-			if (i == 0 && info.calloutTitles) {
+			if (i == 0 && info.calloutTitles && el.nodeName != 'annotation') {
 				// Callout title/top-level text
-				calloutBlock += ` ${el.textContent}`;
+				calloutBlock += ` ${formatCalloutText(el)}`;
 			}
 			else {
 				// Callout nested body text
-				calloutBlock += `\n> ${el.textContent}`;
+				calloutBlock += `\n> ${formatCalloutText(el)}`;
 			}
 		}
 		if (isCallout(callout.nextElementSibling)) {
 			calloutBlock += '\n';
 		}
-		callout.replaceWith(calloutBlock + '\n');
+		// <p> tags ensure <strong>/<em> tags are converted correctly later on
+		callout.outerHTML = '<p>' + calloutBlock + '\n</p>';
+	}
+}
+
+function formatCalloutText(el: Node): string {
+	// Fix callout blocks containing line breaks
+	if (el.nodeName == 'P') {
+		return (el as HTMLElement).innerHTML.replace(
+			/(?:<br>)+/g,
+			'&lt;br&gt;'
+		);
+	}
+	// Add '> ' for each new line in multiline math
+	else if (el.nodeName == 'annotation') {
+		return el.textContent?.replace(/\n/g, '\n> ') ?? '';
+	}
+	else {
+		return el.textContent ?? '';
 	}
 }
 
